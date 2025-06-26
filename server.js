@@ -73,8 +73,67 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
       }
     });
 
-    if (!output || !output[0]) {
-      throw new Error("No output received from Replicate");
+    // 🔍 DEBUG: Log the full response to understand the structure
+    console.log('Full Replicate output:', JSON.stringify(output, null, 2));
+    console.log('Output type:', typeof output);
+    console.log('Is array:', Array.isArray(output));
+    if (Array.isArray(output)) {
+      console.log('First item:', output[0]);
+      console.log('First item type:', typeof output[0]);
+    }
+
+    // ✅ IMPROVED URL EXTRACTION for Flux model
+    let imageUrl;
+    
+    try {
+      if (Array.isArray(output) && output.length > 0) {
+        // Case 1: Array of URLs (most common)
+        if (typeof output[0] === 'string' && output[0].startsWith('http')) {
+          imageUrl = output[0];
+        }
+        // Case 2: Array of objects with URL property
+        else if (typeof output[0] === 'object' && output[0].url) {
+          imageUrl = output[0].url;
+        }
+        // Case 3: Array of objects with image property
+        else if (typeof output[0] === 'object' && output[0].image) {
+          imageUrl = output[0].image;
+        }
+        // Case 4: Array of objects with output property
+        else if (typeof output[0] === 'object' && output[0].output) {
+          imageUrl = output[0].output;
+        }
+      }
+      // Case 5: Direct URL string
+      else if (typeof output === 'string' && output.startsWith('http')) {
+        imageUrl = output;
+      }
+      // Case 6: Object with direct properties
+      else if (typeof output === 'object') {
+        if (output.url) imageUrl = output.url;
+        else if (output.image) imageUrl = output.image;
+        else if (output.output) imageUrl = output.output;
+        else if (output.images && output.images[0]) imageUrl = output.images[0];
+      }
+
+      console.log('Extracted image URL:', imageUrl);
+
+      // Validate the extracted URL
+      if (!imageUrl) {
+        throw new Error(`No valid image URL found in response. Full response: ${JSON.stringify(output)}`);
+      }
+
+      if (typeof imageUrl !== 'string') {
+        throw new Error(`Image URL is not a string: ${typeof imageUrl}. Value: ${JSON.stringify(imageUrl)}`);
+      }
+
+      if (!imageUrl.startsWith('http')) {
+        throw new Error(`Invalid image URL format: ${imageUrl}`);
+      }
+
+    } catch (extractionError) {
+      console.error('URL extraction error:', extractionError);
+      throw new Error(`Failed to extract image URL: ${extractionError.message}`);
     }
 
     // Clean up uploaded file
@@ -83,7 +142,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     // Return JSON response for Shopify integration
     res.json({
       success: true,
-      image_url: output[0],
+      image_url: imageUrl,  // ✅ Now properly extracted!
       style: style,
       message: 'Image stylized successfully!'
     });
@@ -104,6 +163,58 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
       success: false,
       error: error.message,
       message: 'Failed to stylize image'
+    });
+  }
+});
+
+// 🔧 DEBUG ENDPOINT: Add this temporarily to test the response format
+app.post('/debug-stylize', upload.single('image'), async (req, res) => {
+  try {
+    const style = req.body.style || 'anime';
+    const imagePath = req.file.path;
+    const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
+    const base64 = `data:image/jpeg;base64,${imageData}`;
+
+    const prompt = 'A beautiful anime-style portrait with vibrant colors and detailed features';
+
+    console.log('DEBUG: Making Replicate call...');
+    
+    const output = await replicate.run("black-forest-labs/flux-dev", {
+      input: {
+        prompt,
+        image: base64
+      }
+    });
+
+    // Clean up
+    fs.unlinkSync(imagePath);
+
+    // Return the RAW response for debugging
+    res.json({
+      debug: true,
+      raw_output: output,
+      output_type: typeof output,
+      is_array: Array.isArray(output),
+      array_length: Array.isArray(output) ? output.length : null,
+      first_item: Array.isArray(output) && output.length > 0 ? output[0] : null,
+      first_item_type: Array.isArray(output) && output.length > 0 ? typeof output[0] : null,
+      object_keys: typeof output === 'object' && !Array.isArray(output) ? Object.keys(output) : null
+    });
+
+  } catch (error) {
+    console.error('Debug error:', error);
+    
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error('Cleanup error:', cleanupError);
+      }
+    }
+
+    res.status(500).json({
+      debug: true,
+      error: error.message
     });
   }
 });
