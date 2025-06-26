@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload & Stylize</title>
+</head>
+<body>
+  <h1>Upload a Photo & Choose a Style</h1>
+  <form action="/stylize" method="POST" enctype="multipart/form-data">
+    <label>Select an image:</label>
+    <input type="file" name="image" required><br><br>
+
+    <label>Select a style:</label>
+    <select name="style">
+      <option value="animated">Animated Glow</option>
+      <option value="starry">Starry Dream</option>
+      <option value="royal">Royal Legacy</option>
+      <option value="minimal">Nordic Minimal</option>
+      <option value="stone">Eternal Stone</option>
+      <option value="color_melt">Color Melt</option>
+      <option value="oil">Oil Masterpiece</option>
+      <option value="celestial">Celestial Bloom</option>
+    </select><br><br>
+
+    <button type="submit">Stylize</button>
+  </form>
+</body>
+</html>
+
