@@ -1,3 +1,4 @@
+cat > server.js << 'EOF'
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
@@ -104,7 +105,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
 
-    // 🔧 FIXED: Proper Replicate call and response handling
+    // 🔧 FIXED: Proper Replicate call
     console.log('Starting Replicate generation...');
     
     const output = await replicate.run("black-forest-labs/flux-dev", {
@@ -118,33 +119,47 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     console.log('Output type:', typeof output);
     console.log('Is array:', Array.isArray(output));
     console.log('Array length:', Array.isArray(output) ? output.length : 'N/A');
-    console.log('Full output:', JSON.stringify(output, null, 2));
+    console.log('First item type:', Array.isArray(output) && output.length > 0 ? typeof output[0] : 'N/A');
+    console.log('First item constructor:', Array.isArray(output) && output.length > 0 ? output[0].constructor.name : 'N/A');
+    console.log('Has url method:', Array.isArray(output) && output.length > 0 && typeof output[0].url === 'function');
     console.log('=== END DEBUG ===');
 
-    // 🔧 FIXED: Simple URL extraction based on Replicate's actual response format
+    // 🔧 FIXED: Extract URL from Replicate File objects
     let imageUrl;
     
     if (Array.isArray(output) && output.length > 0) {
-      // Most common case: array of URLs like ["https://replicate.delivery/..."]
       const firstItem = output[0];
-      if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
+      
+      // Case 1: Replicate File object with .url() method (MOST COMMON)
+      if (firstItem && typeof firstItem.url === 'function') {
+        imageUrl = firstItem.url();
+        console.log('✅ Extracted URL using .url() method:', imageUrl);
+      }
+      // Case 2: Direct string URL (fallback)
+      else if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
         imageUrl = firstItem;
-      } else if (firstItem && typeof firstItem === 'object' && firstItem.url) {
+        console.log('✅ Extracted direct URL string:', imageUrl);
+      }
+      // Case 3: Object with url property
+      else if (firstItem && typeof firstItem === 'object' && firstItem.url && typeof firstItem.url === 'string') {
         imageUrl = firstItem.url;
+        console.log('✅ Extracted URL from object property:', imageUrl);
       }
     } else if (typeof output === 'string' && output.startsWith('http')) {
       // Direct URL string
       imageUrl = output;
-    } else if (output && typeof output === 'object' && output.url) {
-      // Object with URL property
-      imageUrl = output.url;
+      console.log('✅ Extracted direct output URL:', imageUrl);
+    } else if (output && typeof output.url === 'function') {
+      // Single File object
+      imageUrl = output.url();
+      console.log('✅ Extracted URL from single File object:', imageUrl);
     }
 
-    console.log('Extracted image URL:', imageUrl);
+    console.log('Final extracted image URL:', imageUrl);
 
     // Validate the extracted URL
     if (!imageUrl) {
-      throw new Error(`No valid image URL found in response. Full response: ${JSON.stringify(output)}`);
+      throw new Error(`No valid image URL found. Output structure: Array: ${Array.isArray(output)}, Length: ${Array.isArray(output) ? output.length : 'N/A'}, First item type: ${Array.isArray(output) && output.length > 0 ? typeof output[0] : 'N/A'}, Has .url() method: ${Array.isArray(output) && output.length > 0 && typeof output[0].url === 'function'}`);
     }
 
     if (typeof imageUrl !== 'string') {
@@ -186,7 +201,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
   }
 });
 
-// 🔧 DEBUG ENDPOINT: Add this temporarily to test the response format
+// 🔧 DEBUG ENDPOINT: Updated to test File object URL extraction
 app.post('/debug-stylize', upload.single('image'), async (req, res) => {
   try {
     const style = req.body.style || 'anime';
@@ -205,19 +220,36 @@ app.post('/debug-stylize', upload.single('image'), async (req, res) => {
       }
     });
 
+    // Test the .url() method
+    let testUrl = null;
+    let hasUrlMethod = false;
+    
+    if (Array.isArray(output) && output.length > 0 && output[0]) {
+      hasUrlMethod = typeof output[0].url === 'function';
+      if (hasUrlMethod) {
+        try {
+          testUrl = output[0].url();
+        } catch (urlError) {
+          console.error('Error calling .url():', urlError);
+        }
+      }
+    }
+
     // Clean up
     fs.unlinkSync(imagePath);
 
-    // Return the RAW response for debugging
+    // Return detailed debugging info
     res.json({
       debug: true,
       raw_output: output,
       output_type: typeof output,
       is_array: Array.isArray(output),
       array_length: Array.isArray(output) ? output.length : null,
-      first_item: Array.isArray(output) && output.length > 0 ? output[0] : null,
       first_item_type: Array.isArray(output) && output.length > 0 ? typeof output[0] : null,
-      object_keys: typeof output === 'object' && !Array.isArray(output) ? Object.keys(output) : null
+      first_item_constructor: Array.isArray(output) && output.length > 0 ? output[0].constructor.name : null,
+      has_url_method: hasUrlMethod,
+      extracted_url: testUrl,
+      url_method_success: testUrl !== null
     });
 
   } catch (error) {
@@ -247,3 +279,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+EOF
