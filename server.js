@@ -35,8 +35,46 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
   try {
     const style = req.body.style || 'anime';
     const imagePath = req.file.path;
-    const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
-    const base64 = `data:image/jpeg;base64,${imageData}`;
+    
+    // Read and validate image
+    console.log('Processing image:', {
+      originalName: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: imagePath
+    });
+
+    // Validate file exists and has content
+    if (!fs.existsSync(imagePath)) {
+      throw new Error('Uploaded file not found');
+    }
+
+    const stats = fs.statSync(imagePath);
+    if (stats.size === 0) {
+      throw new Error('Uploaded file is empty');
+    }
+
+    // Read image data
+    const imageBuffer = fs.readFileSync(imagePath);
+    const base64Data = imageBuffer.toString('base64');
+    
+    // Determine MIME type
+    let mimeType = req.file.mimetype;
+    if (!mimeType) {
+      const ext = path.extname(req.file.originalname || '').toLowerCase();
+      mimeType = ext === '.png' ? 'image/png' : 
+                 ext === '.gif' ? 'image/gif' : 
+                 'image/jpeg'; // default to jpeg
+    }
+    
+    // Create proper data URL
+    const base64 = `data:${mimeType};base64,${base64Data}`;
+    
+    console.log('Image prepared:', {
+      mimeType,
+      base64Length: base64Data.length,
+      base64Preview: base64.substring(0, 50) + '...'
+    });
 
     // Updated style prompts to match frontend dropdown
     const stylePrompts = {
@@ -66,6 +104,9 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
 
+    // 🔧 FIXED: Proper Replicate call and response handling
+    console.log('Starting Replicate generation...');
+    
     const output = await replicate.run("black-forest-labs/flux-dev", {
       input: {
         prompt,
@@ -73,67 +114,45 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
       }
     });
 
-    // 🔍 DEBUG: Log the full response to understand the structure
-    console.log('Full Replicate output:', JSON.stringify(output, null, 2));
+    console.log('=== REPLICATE RESPONSE DEBUG ===');
     console.log('Output type:', typeof output);
     console.log('Is array:', Array.isArray(output));
-    if (Array.isArray(output)) {
-      console.log('First item:', output[0]);
-      console.log('First item type:', typeof output[0]);
-    }
+    console.log('Array length:', Array.isArray(output) ? output.length : 'N/A');
+    console.log('Full output:', JSON.stringify(output, null, 2));
+    console.log('=== END DEBUG ===');
 
-    // ✅ IMPROVED URL EXTRACTION for Flux model
+    // 🔧 FIXED: Simple URL extraction based on Replicate's actual response format
     let imageUrl;
     
-    try {
-      if (Array.isArray(output) && output.length > 0) {
-        // Case 1: Array of URLs (most common)
-        if (typeof output[0] === 'string' && output[0].startsWith('http')) {
-          imageUrl = output[0];
-        }
-        // Case 2: Array of objects with URL property
-        else if (typeof output[0] === 'object' && output[0].url) {
-          imageUrl = output[0].url;
-        }
-        // Case 3: Array of objects with image property
-        else if (typeof output[0] === 'object' && output[0].image) {
-          imageUrl = output[0].image;
-        }
-        // Case 4: Array of objects with output property
-        else if (typeof output[0] === 'object' && output[0].output) {
-          imageUrl = output[0].output;
-        }
+    if (Array.isArray(output) && output.length > 0) {
+      // Most common case: array of URLs like ["https://replicate.delivery/..."]
+      const firstItem = output[0];
+      if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
+        imageUrl = firstItem;
+      } else if (firstItem && typeof firstItem === 'object' && firstItem.url) {
+        imageUrl = firstItem.url;
       }
-      // Case 5: Direct URL string
-      else if (typeof output === 'string' && output.startsWith('http')) {
-        imageUrl = output;
-      }
-      // Case 6: Object with direct properties
-      else if (typeof output === 'object') {
-        if (output.url) imageUrl = output.url;
-        else if (output.image) imageUrl = output.image;
-        else if (output.output) imageUrl = output.output;
-        else if (output.images && output.images[0]) imageUrl = output.images[0];
-      }
+    } else if (typeof output === 'string' && output.startsWith('http')) {
+      // Direct URL string
+      imageUrl = output;
+    } else if (output && typeof output === 'object' && output.url) {
+      // Object with URL property
+      imageUrl = output.url;
+    }
 
-      console.log('Extracted image URL:', imageUrl);
+    console.log('Extracted image URL:', imageUrl);
 
-      // Validate the extracted URL
-      if (!imageUrl) {
-        throw new Error(`No valid image URL found in response. Full response: ${JSON.stringify(output)}`);
-      }
+    // Validate the extracted URL
+    if (!imageUrl) {
+      throw new Error(`No valid image URL found in response. Full response: ${JSON.stringify(output)}`);
+    }
 
-      if (typeof imageUrl !== 'string') {
-        throw new Error(`Image URL is not a string: ${typeof imageUrl}. Value: ${JSON.stringify(imageUrl)}`);
-      }
+    if (typeof imageUrl !== 'string') {
+      throw new Error(`Image URL is not a string: ${typeof imageUrl}. Value: ${JSON.stringify(imageUrl)}`);
+    }
 
-      if (!imageUrl.startsWith('http')) {
-        throw new Error(`Invalid image URL format: ${imageUrl}`);
-      }
-
-    } catch (extractionError) {
-      console.error('URL extraction error:', extractionError);
-      throw new Error(`Failed to extract image URL: ${extractionError.message}`);
+    if (!imageUrl.startsWith('http')) {
+      throw new Error(`Invalid image URL format: ${imageUrl}`);
     }
 
     // Clean up uploaded file
@@ -142,7 +161,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     // Return JSON response for Shopify integration
     res.json({
       success: true,
-      image_url: imageUrl,  // ✅ Now properly extracted!
+      image_url: imageUrl,
       style: style,
       message: 'Image stylized successfully!'
     });
