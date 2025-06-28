@@ -49,7 +49,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
 
-    const output = await replicate.run("black-forest-labs/flux-dev", {
+const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
       input: {
         prompt,
         image: base64
