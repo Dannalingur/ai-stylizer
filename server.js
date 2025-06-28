@@ -27,36 +27,37 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Refined prompts for better output
+const refinedPrompts = {
+  'anime': 'A portrait of a person in anime style, maintaining original face and lighting. Big expressive eyes, soft shading, vibrant colors.',
+  'cartoon': 'A cartoon-style portrait with bold outlines, exaggerated facial features, and flat colors. Preserve the original expression.',
+  'oil-painting': 'A realistic oil painting of the person, in renaissance style. Maintain original facial structure and lighting.',
+  'watercolor': 'A soft watercolor portrait with gentle brush strokes and flowing pastel colors. Maintain the subject’s pose and facial features.',
+  'sketch': 'A pencil sketch portrait with realistic proportions and detailed shading. Do not alter facial expression.',
+  'pop-art': 'A 1960s pop art portrait with comic-style halftone patterns, bold lines, and bright primary colors. Preserve pose and face.',
+  'fantasy': 'A fantasy-themed portrait with glowing magical elements and a dreamy atmosphere. Maintain facial likeness and posture.',
+  'cyberpunk': 'A cyberpunk-style portrait with neon colors, holographic effects, and futuristic city lights. Retain the subject’s features.',
+  'vintage': 'A sepia-toned vintage portrait in early 20th century photographic style. Maintain natural expression and lighting.',
+  'neon': 'A glowing neon-style portrait with electric colors and vibrant lighting effects. Keep facial details clear.',
+  'animated': 'A stylized animated portrait with glowing lines and cartoonish features. Keep identity and pose intact.',
+  'starry': 'A Van Gogh-inspired portrait in the style of Starry Night. Swirling brush strokes and vibrant blues and yellows.',
+  'royal': 'A majestic oil painting of the person dressed in royal clothing. Renaissance portrait lighting and textures. Maintain facial identity.',
+  'minimal': 'A minimalistic Nordic-style edit with soft light, clean background, and muted tones. Preserve photo realism.',
+  'stone': 'A stone-textured transformation of the portrait. Dramatic lighting and chiseled effect, maintaining original structure.',
+  'color_melt': 'A surreal portrait where colors melt and swirl artistically. Preserve subject’s face beneath distortion.',
+  'oil': 'A highly detailed oil painting portrait in rich renaissance style. Keep original facial form and posture.',
+  'celestial': 'A celestial-themed portrait with stars, galaxies, and glowing atmosphere. Maintain facial features clearly.'
+};
+
 app.post('/stylize', upload.single('image'), async (req, res) => {
   try {
     const style = req.body.style || 'anime';
     const imagePath = req.file.path;
-    
+
     const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
     const base64 = `data:image/jpeg;base64,${imageData}`;
 
-    const stylePrompts = {
-      'anime': 'A beautiful anime-style portrait with vibrant colors and detailed features',
-      'cartoon': 'A fun cartoon-style illustration with bold lines and bright colors',
-      'oil-painting': 'A classical oil painting portrait in renaissance style with rich textures',
-      'watercolor': 'A soft watercolor painting with flowing colors and artistic brush strokes',
-      'sketch': 'A detailed pencil sketch with realistic shading and fine lines',
-      'pop-art': 'A vibrant pop art style portrait with bold colors and comic book aesthetics',
-      'fantasy': 'A magical fantasy art portrait with mystical elements and enchanting atmosphere',
-      'cyberpunk': 'A futuristic cyberpunk portrait with neon lights and digital elements',
-      'vintage': 'A classic vintage photograph with sepia tones and old-fashioned styling',
-      'neon': 'A glowing neon-style portrait with electric colors and luminous effects',
-      'animated': 'A vibrant animated portrait with glowing edges and neon lights',
-      'starry': 'A dreamy portrait in the style of Van Gogh\'s Starry Night',
-      'royal': 'A majestic royal oil painting of a person in regal clothing',
-      'minimal': 'A minimalistic, Nordic-inspired photo edit with soft tones',
-      'stone': 'A dramatic, stone-textured artistic transformation',
-      'color_melt': 'A surreal, colorful melt of the original portrait',
-      'oil': 'A highly detailed oil painting in renaissance style',
-      'celestial': 'A portrait with glowing stars and a celestial aura'
-    };
-
-    const prompt = stylePrompts[style] || stylePrompts['anime'];
+    const prompt = refinedPrompts[style] || refinedPrompts['anime'];
 
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
@@ -68,22 +69,14 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
       }
     });
 
-    console.log('Replicate output type:', typeof output);
-    console.log('Is array:', Array.isArray(output));
-
-    // Extract URL handling Replicate File objects
     let imageUrl;
-    
+
     if (Array.isArray(output) && output.length > 0) {
       const firstItem = output[0];
-      
-      // Try .url() method first (for File objects)
       if (firstItem && typeof firstItem.url === 'function') {
         imageUrl = firstItem.url();
         console.log('Extracted URL using .url() method:', imageUrl);
-      }
-      // Fallback to direct string
-      else if (typeof firstItem === 'string') {
+      } else if (typeof firstItem === 'string') {
         imageUrl = firstItem;
         console.log('Extracted direct URL string:', imageUrl);
       }
@@ -104,7 +97,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
 
   } catch (error) {
     console.error('Stylization error:', error);
-    
+
     if (req.file && req.file.path) {
       try {
         fs.unlinkSync(req.file.path);
@@ -129,3 +122,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
