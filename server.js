@@ -7,7 +7,6 @@ import { config } from 'dotenv';
 import Replicate from 'replicate';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
-import FormData from 'form-data';
 
 config();
 
@@ -37,22 +36,22 @@ const refinedPrompts = {
   'minimal': 'A clean, minimalistic photo edit of the same person in Nordic style. Preserve all facial features and photo realism. Apply muted earthy tones, soft lighting, and desaturated color palette.'
 };
 
-// Upload to gofile.io
-async function uploadToGoFile(filePath) {
-  const form = new FormData();
-  form.append('file', fs.createReadStream(filePath));
+// Upload to transfer.sh
+async function uploadToTransferSh(filePath) {
+  const fileStream = fs.createReadStream(filePath);
+  const fileName = path.basename(filePath);
 
-  const res = await axios.post('https://api.gofile.io/uploadFile', form, {
-    headers: form.getHeaders(),
+  const response = await axios.put(`https://transfer.sh/${fileName}`, fileStream, {
+    headers: {
+      'Content-Type': 'application/octet-stream'
+    }
   });
 
-  if (!res.data || res.data.status !== 'ok') {
-    console.error('Upload failed:', res.data);
-    throw new Error('Failed to upload image to gofile.io');
+  if (!response.data || !response.data.startsWith('https://')) {
+    throw new Error('Failed to upload image to transfer.sh');
   }
 
-  // Direct image link (not the download page)
-  return res.data.data.directLink;
+  return response.data.trim();
 }
 
 app.post('/stylize', upload.single('image'), async (req, res) => {
@@ -63,7 +62,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     const prompt = refinedPrompts[style] || refinedPrompts['oil'];
     console.log(`Using prompt: ${prompt}`);
 
-    const imageUrl = await uploadToGoFile(imagePath);
+    const imageUrl = await uploadToTransferSh(imagePath);
     console.log(`Uploaded image to: ${imageUrl}`);
 
     const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
