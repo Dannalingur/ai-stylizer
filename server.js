@@ -36,22 +36,23 @@ const refinedPrompts = {
   'minimal': 'A clean, minimalistic photo edit of the same person in Nordic style. Preserve all facial features and photo realism. Apply muted earthy tones, soft lighting, and desaturated color palette.'
 };
 
-// Upload to transfer.sh
-async function uploadToTransferSh(filePath) {
-  const fileStream = fs.createReadStream(filePath);
-  const fileName = path.basename(filePath);
+// Upload image to ImgBB
+async function uploadToImgBB(imagePath) {
+  const apiKey = process.env.IMGBB_API_KEY;
+  const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
 
-  const response = await axios.put(`https://transfer.sh/${fileName}`, fileStream, {
-    headers: {
-      'Content-Type': 'application/octet-stream'
+  const response = await axios.post('https://api.imgbb.com/1/upload', null, {
+    params: {
+      key: apiKey,
+      image: imageData
     }
   });
 
-  if (!response.data || !response.data.startsWith('https://')) {
-    throw new Error('Failed to upload image to transfer.sh');
+  if (!response.data || !response.data.success) {
+    throw new Error('Failed to upload image to ImgBB');
   }
 
-  return response.data.trim();
+  return response.data.data.url;
 }
 
 app.post('/stylize', upload.single('image'), async (req, res) => {
@@ -62,7 +63,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     const prompt = refinedPrompts[style] || refinedPrompts['oil'];
     console.log(`Using prompt: ${prompt}`);
 
-    const imageUrl = await uploadToTransferSh(imagePath);
+    const imageUrl = await uploadToImgBB(imagePath);
     console.log(`Uploaded image to: ${imageUrl}`);
 
     const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
