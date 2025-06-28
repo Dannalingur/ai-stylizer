@@ -49,24 +49,25 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
 
-const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
+    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
       input: {
         prompt,
         image: base64
       }
     });
 
+    console.log("Raw Replicate output:", output);
+
     let imageUrl;
 
     if (Array.isArray(output) && output.length > 0) {
-      const firstItem = output[0];
-      if (firstItem && typeof firstItem.url === 'function') {
-        imageUrl = firstItem.url();
-        console.log('Extracted URL using .url() method:', imageUrl);
-      } else if (typeof firstItem === 'string') {
-        imageUrl = firstItem;
-        console.log('Extracted direct URL string:', imageUrl);
+      if (typeof output[0] === 'object' && output[0].image) {
+        imageUrl = output[0].image;
+      } else if (typeof output[0] === 'string') {
+        imageUrl = output[0];
       }
+    } else if (typeof output === 'object' && output.image) {
+      imageUrl = output.image;
     }
 
     if (!imageUrl) {
