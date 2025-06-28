@@ -27,37 +27,24 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Refined prompts for better output
+// Refined and restricted style prompts
 const refinedPrompts = {
-  'anime': 'A portrait of a person in anime style, maintaining original face and lighting. Big expressive eyes, soft shading, vibrant colors.',
-  'cartoon': 'A cartoon-style portrait with bold outlines, exaggerated facial features, and flat colors. Preserve the original expression.',
-  'oil-painting': 'A realistic oil painting of the person, in renaissance style. Maintain original facial structure and lighting.',
-  'watercolor': 'A soft watercolor portrait with gentle brush strokes and flowing pastel colors. Maintain the subject’s pose and facial features.',
-  'sketch': 'A pencil sketch portrait with realistic proportions and detailed shading. Do not alter facial expression.',
-  'pop-art': 'A 1960s pop art portrait with comic-style halftone patterns, bold lines, and bright primary colors. Preserve pose and face.',
-  'fantasy': 'A fantasy-themed portrait with glowing magical elements and a dreamy atmosphere. Maintain facial likeness and posture.',
-  'cyberpunk': 'A cyberpunk-style portrait with neon colors, holographic effects, and futuristic city lights. Retain the subject’s features.',
-  'vintage': 'A sepia-toned vintage portrait in early 20th century photographic style. Maintain natural expression and lighting.',
-  'neon': 'A glowing neon-style portrait with electric colors and vibrant lighting effects. Keep facial details clear.',
-  'animated': 'A stylized animated portrait with glowing lines and cartoonish features. Keep identity and pose intact.',
-  'starry': 'A Van Gogh-inspired portrait in the style of Starry Night. Swirling brush strokes and vibrant blues and yellows.',
-  'royal': 'A majestic oil painting of the person dressed in royal clothing. Renaissance portrait lighting and textures. Maintain facial identity.',
-  'minimal': 'A minimalistic Nordic-style edit with soft light, clean background, and muted tones. Preserve photo realism.',
-  'stone': 'A stone-textured transformation of the portrait. Dramatic lighting and chiseled effect, maintaining original structure.',
-  'color_melt': 'A surreal portrait where colors melt and swirl artistically. Preserve subject’s face beneath distortion.',
-  'oil': 'A highly detailed oil painting portrait in rich renaissance style. Keep original facial form and posture.',
-  'celestial': 'A celestial-themed portrait with stars, galaxies, and glowing atmosphere. Maintain facial features clearly.'
+  'royal': 'A majestic oil portrait of the same person wearing royal Renaissance clothing. Keep the original facial structure, expression, and pose. Use soft directional light, rich textures, and dark background.',
+  'oil': 'An elegant oil painting of the same person in Renaissance style. Preserve the facial features, lighting, and expression. Apply painterly brush strokes, canvas texture, and warm tones.',
+  'watercolor': 'A soft watercolor painting of the same person. Keep facial details and pose intact. Use flowing brush strokes, pastel colors, and gentle light washes.',
+  'sketch': 'A pencil sketch of the same person with realistic proportions. Keep all facial features and structure. Add shading and crosshatching on a white background.',
+  'minimal': 'A clean, minimalistic photo edit of the same person in Nordic style. Preserve all facial features and photo realism. Apply muted earthy tones, soft lighting, and desaturated color palette.'
 };
 
 app.post('/stylize', upload.single('image'), async (req, res) => {
   try {
-    const style = req.body.style || 'anime';
+    const style = req.body.style || 'oil';
     const imagePath = req.file.path;
 
     const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
     const base64 = `data:image/jpeg;base64,${imageData}`;
 
-    const prompt = refinedPrompts[style] || refinedPrompts['anime'];
+    const prompt = refinedPrompts[style] || refinedPrompts['oil'];
 
     console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
