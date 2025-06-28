@@ -6,6 +6,8 @@ import path from 'path';
 import { config } from 'dotenv';
 import Replicate from 'replicate';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import FormData from 'form-data';
 
 config();
 
@@ -35,6 +37,22 @@ const refinedPrompts = {
   'minimal': 'A clean, minimalistic photo edit of the same person in Nordic style. Preserve all facial features and photo realism. Apply muted earthy tones, soft lighting, and desaturated color palette.'
 };
 
+// Upload to file.io helper
+async function uploadToFileIO(filePath) {
+  const form = new FormData();
+  form.append('file', fs.createReadStream(filePath));
+
+  const response = await axios.post('https://file.io', form, {
+    headers: form.getHeaders(),
+  });
+
+  if (!response.data.success) {
+    throw new Error('Failed to upload image to file.io');
+  }
+
+  return response.data.link;
+}
+
 app.post('/stylize', upload.single('image'), async (req, res) => {
   try {
     const style = req.body.style || 'oil';
@@ -43,8 +61,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     const prompt = refinedPrompts[style] || refinedPrompts['oil'];
     console.log(`Using prompt: ${prompt}`);
 
-    // Upload image to Replicate's upload service
-    const imageUrl = await replicate.upload(fs.createReadStream(imagePath));
+    const imageUrl = await uploadToFileIO(imagePath);
     console.log(`Uploaded image to: ${imageUrl}`);
 
     const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
