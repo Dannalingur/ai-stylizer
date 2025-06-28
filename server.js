@@ -27,7 +27,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Refined and restricted style prompts
 const refinedPrompts = {
   'royal': 'A majestic oil portrait of the same person wearing royal Renaissance clothing. Keep the original facial structure, expression, and pose. Use soft directional light, rich textures, and dark background.',
   'oil': 'An elegant oil painting of the same person in Renaissance style. Preserve the facial features, lighting, and expression. Apply painterly brush strokes, canvas texture, and warm tones.',
@@ -41,45 +40,46 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     const style = req.body.style || 'oil';
     const imagePath = req.file.path;
 
-    const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
-    const base64 = `data:image/jpeg;base64,${imageData}`;
-
     const prompt = refinedPrompts[style] || refinedPrompts['oil'];
-
-    console.log(`Processing image with style: ${style}`);
     console.log(`Using prompt: ${prompt}`);
+
+    // Upload image to Replicate's upload service
+    const imageUrl = await replicate.upload(fs.createReadStream(imagePath));
+    console.log(`Uploaded image to: ${imageUrl}`);
 
     const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
       input: {
         prompt,
-        image: base64
+        image_url: imageUrl
       }
     });
 
     console.log("Raw Replicate output:", output);
 
-    let imageUrl;
+    let finalUrl;
 
     if (Array.isArray(output) && output.length > 0) {
       if (typeof output[0] === 'object' && output[0].image) {
-        imageUrl = output[0].image;
+        finalUrl = output[0].image;
       } else if (typeof output[0] === 'string') {
-        imageUrl = output[0];
+        finalUrl = output[0];
       }
     } else if (typeof output === 'object' && output.image) {
-      imageUrl = output.image;
+      finalUrl = output.image;
+    } else if (typeof output === 'string') {
+      finalUrl = output;
     }
 
-    if (!imageUrl) {
-      throw new Error(`No image URL found in output`);
+    if (!finalUrl) {
+      throw new Error('No image URL found in output');
     }
 
     fs.unlinkSync(imagePath);
 
     res.json({
       success: true,
-      image_url: imageUrl,
-      style: style,
+      image_url: finalUrl,
+      style,
       message: 'Image stylized successfully!'
     });
 
