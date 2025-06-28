@@ -41,14 +41,18 @@ async function uploadToImgBB(imagePath) {
   const apiKey = process.env.IMGBB_API_KEY;
   const imageData = fs.readFileSync(imagePath, { encoding: 'base64' });
 
-  const response = await axios.post('https://api.imgbb.com/1/upload', null, {
-    params: {
-      key: apiKey,
-      image: imageData
+  const payload = new URLSearchParams();
+  payload.append('key', apiKey);
+  payload.append('image', imageData);
+
+  const response = await axios.post('https://api.imgbb.com/1/upload', payload.toString(), {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
     }
   });
 
   if (!response.data || !response.data.success) {
+    console.error('ImgBB error response:', response.data);
     throw new Error('Failed to upload image to ImgBB');
   }
 
@@ -129,4 +133,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
