@@ -37,20 +37,22 @@ const refinedPrompts = {
   'minimal': 'A clean, minimalistic photo edit of the same person in Nordic style. Preserve all facial features and photo realism. Apply muted earthy tones, soft lighting, and desaturated color palette.'
 };
 
-// Upload to file.io helper
-async function uploadToFileIO(filePath) {
+// Upload to gofile.io
+async function uploadToGoFile(filePath) {
   const form = new FormData();
   form.append('file', fs.createReadStream(filePath));
 
-  const response = await axios.post('https://file.io', form, {
+  const res = await axios.post('https://api.gofile.io/uploadFile', form, {
     headers: form.getHeaders(),
   });
 
-  if (!response.data.success) {
-    throw new Error('Failed to upload image to file.io');
+  if (!res.data || res.data.status !== 'ok') {
+    console.error('Upload failed:', res.data);
+    throw new Error('Failed to upload image to gofile.io');
   }
 
-  return response.data.link;
+  // Direct image link (not the download page)
+  return res.data.data.directLink;
 }
 
 app.post('/stylize', upload.single('image'), async (req, res) => {
@@ -61,7 +63,7 @@ app.post('/stylize', upload.single('image'), async (req, res) => {
     const prompt = refinedPrompts[style] || refinedPrompts['oil'];
     console.log(`Using prompt: ${prompt}`);
 
-    const imageUrl = await uploadToFileIO(imagePath);
+    const imageUrl = await uploadToGoFile(imagePath);
     console.log(`Uploaded image to: ${imageUrl}`);
 
     const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
