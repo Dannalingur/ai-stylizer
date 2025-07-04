@@ -1,64 +1,350 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>AI Stylizer</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
-    img { max-width: 100%; margin-top: 20px; }
-    select, input[type="file"], button { display: block; margin: 20px 0; }
-  </style>
+    <title>Face-to-Many Character Transformer</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        h1 { 
+            text-align: center; 
+            color: #333; 
+            margin-bottom: 10px;
+            font-size: 3em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.4em;
+            font-weight: 500;
+        }
+        .upload-area { 
+            border: 3px dashed #667eea; 
+            padding: 50px; 
+            text-align: center; 
+            margin: 30px 0;
+            border-radius: 15px;
+            background: linear-gradient(45deg, #f8f9ff, #f0f2ff);
+            transition: all 0.4s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, #f0f2ff, #e8f0ff);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+        }
+        .selection-section {
+            margin: 40px 0;
+            padding: 30px;
+            background: linear-gradient(145deg, #f8f9ff, #f0f2ff);
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        .selection-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .dropdown-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .dropdown-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            text-align: center;
+        }
+        select {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        select:focus, select:hover {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+        button { 
+            padding: 20px 40px; 
+            font-size: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            cursor: pointer;
+            border-radius: 12px;
+            width: 100%;
+            margin: 30px 0;
+            transition: all 0.4s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        button:hover:not(:disabled) { 
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result { 
+            margin-top: 40px; 
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(145deg, #f8f9ff, #f0f2ff);
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            display: none;
+        }
+        .result img { 
+            max-width: 100%; 
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin: 20px 0;
+        }
+        .info {
+            background: linear-gradient(135deg, #e8f2ff, #f0f8ff);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 6px solid #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        .processing {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid #ffc107;
+        }
+        .processing.show {
+            display: block;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .model-info {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 6px solid #28a745;
+            text-align: center;
+        }
+        .file-input {
+            display: none;
+        }
+        .selected-file {
+            margin-top: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-radius: 10px;
+            border: 2px solid #28a745;
+        }
+    </style>
 </head>
 <body>
-  <h1>AI Stylizer</h1>
+    <div class="container">
+        <h1>🎭 Face-to-Many</h1>
+        <p class="subtitle">Transform into any character while preserving your identity</p>
+        
+        <div class="model-info">
+            <strong>🔥 Powered by FLUX Kontext Apps</strong><br>
+            Advanced character transformation with perfect identity preservation
+        </div>
+        
+        <div class="info">
+            <strong>✨ How it works:</strong> Upload your photo, choose a style and persona. The AI will transform you while keeping your facial features perfectly intact!
+            <br><br>
+            <small><strong>Optimized Settings:</strong> Background and outfit preservation are automatically enabled for the best transformation results.</small>
+        </div>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-area" onclick="document.getElementById('imageInput').click()">
+                <input type="file" id="imageInput" name="image" accept="image/*" required class="file-input">
+                <p><strong>📸 Upload Your Photo</strong></p>
+                <p>Works best with clear, front-facing photos</p>
+                <div id="selectedFile"></div>
+            </div>
+            
+            <div class="selection-section">
+                <h2 style="text-align: center; color: #333; margin-bottom: 20px;">Choose Style & Persona</h2>
+                <div class="selection-grid">
+                    <div class="dropdown-section">
+                        <h3>🎨 Style</h3>
+                        <select id="styleSelect" name="style" required>
+                            <option value="Anime">🌸 Anime</option>
+                            <option value="Cartoon">😊 Cartoon</option>
+                            <option value="Clay">🏺 Clay</option>
+                            <option value="Gothic">🖤 Gothic</option>
+                            <option value="Graphic Novel">📚 Graphic Novel</option>
+                            <option value="Lego">🧱 Lego</option>
+                            <option value="Memoji">😀 Memoji</option>
+                            <option value="Minecraft">⛏️ Minecraft</option>
+                            <option value="Minimalist">⚪ Minimalist</option>
+                            <option value="Pixel Art">🎮 Pixel Art</option>
+                            <option value="Random">🎲 Random Style</option>
+                            <option value="Simpsons">🟡 Simpsons</option>
+                            <option value="Sketch">✏️ Sketch</option>
+                            <option value="South Park">🏔️ South Park</option>
+                            <option value="Toy">🪆 Toy</option>
+                            <option value="Watercolor">🎨 Watercolor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="dropdown-section">
+                        <h3>👤 Persona</h3>
+                        <select id="personaSelect" name="persona" required>
+                            <option value="Angel">👼 Angel</option>
+                            <option value="Astronaut">👨‍🚀 Astronaut</option>
+                            <option value="Demon">😈 Demon</option>
+                            <option value="Mage">🧙 Mage</option>
+                            <option value="Ninja">🥷 Ninja</option>
+                            <option value="Na'vi">🔵 Na'vi</option>
+                            <option value="None">❌ None</option>
+                            <option value="Random">🎲 Random Persona</option>
+                            <option value="Robot">🤖 Robot</option>
+                            <option value="Samurai">⚔️ Samurai</option>
+                            <option value="Vampire">🧛 Vampire</option>
+                            <option value="Werewolf">🐺 Werewolf</option>
+                            <option value="Zombie">🧟 Zombie</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">🎭 Transform Me!</button>
+        </form>
+        
+        <div id="processing" class="processing">
+            <h3>🎨 AI is transforming your photo...</h3>
+            <p>This may take 10-20 seconds. Creating your character with identity preservation!</p>
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
 
-  <form id="uploadForm" enctype="multipart/form-data">
-    <label for="style">Choose a style:</label>
-    <select name="style" id="style">
-      <option value="royal">Royal</option>
-      <option value="oil">Oil</option>
-      <option value="watercolor">Watercolor</option>
-      <option value="sketch">Sketch</option>
-      <option value="minimal">Minimal</option>
-    </select>
-
-    <input type="file" name="image" id="imageInput" accept="image/*" required />
-    <button type="submit">Stylize Image</button>
-  </form>
-
-  <div id="result"></div>
-
-  <script>
-    const form = document.getElementById('uploadForm');
-    const resultDiv = document.getElementById('result');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const formData = new FormData(form);
-      resultDiv.innerHTML = 'Processing...';
-
-      try {
-        const response = await fetch('/stylize', {
-          method: 'POST',
-          body: formData
+    <script>
+        // Handle file selection
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const selectedFileDiv = document.getElementById('selectedFile');
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                selectedFileDiv.innerHTML = `
+                    <div class="selected-file">
+                        <p><strong>✅ Photo Selected!</strong></p>
+                        <p>${fileName}</p>
+                        <p><small>Click to change photo</small></p>
+                    </div>
+                `;
+            }
         });
 
-        const result = await response.json();
-
-        if (result.success) {
-          resultDiv.innerHTML = `
-            <p><strong>Style:</strong> ${result.style}</p>
-            <img src="${result.image_url}" alt="Stylized Image">
-          `;
-        } else {
-          resultDiv.innerHTML = `<p style="color: red;">Error: ${result.message}</p>`;
-        }
-      } catch (err) {
-        resultDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
-      }
-    });
-  </script>
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const imageFile = document.getElementById('imageInput').files[0];
+            const style = document.getElementById('styleSelect').value;
+            const persona = document.getElementById('personaSelect').value;
+            
+            if (!imageFile) {
+                alert('Please select an image first!');
+                return;
+            }
+            
+            console.log('Submitting form with:', { 
+                style, 
+                persona, 
+                fileName: imageFile.name,
+                note: 'Background and outfit preservation enabled by default'
+            });
+            
+            formData.append('image', imageFile);
+            formData.append('style', style);
+            formData.append('persona', persona);
+            
+            // Show processing animation
+            document.getElementById('processing').classList.add('show');
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = 'Transforming...';
+            
+            try {
+                console.log('Sending request to /transform');
+                const response = await fetch('/transform', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                // Hide processing animation
+                document.getElementById('processing').classList.remove('show');
+                
+                if (result.success) {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>🎉 Character Transformation Complete!</h3>
+                         <p><strong>Style:</strong> ${result.style}</p>
+                         <p><strong>Persona:</strong> ${result.persona}</p>
+                         <p><strong>Model:</strong> ${result.model_used}</p>
+                         <img src="${result.image_url}" alt="Character transformation">
+                         <p><strong>✨ ${result.message}</strong></p>
+                         <p><small>✅ Background and outfit preservation enabled for best results</small></p>`;
+                    document.getElementById('result').style.display = 'block';
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<p style="color: red;">❌ Error: ${result.message}</p>`;
+                    document.getElementById('result').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Frontend error:', error);
+                document.getElementById('processing').classList.remove('show');
+                document.getElementById('result').innerHTML = 
+                    `<p style="color: red;">❌ Network Error: ${error.message}</p>`;
+                document.getElementById('result').style.display = 'block';
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '🎭 Transform Me!';
+            }
+        });
+    </script>
 </body>
 </html>
-
